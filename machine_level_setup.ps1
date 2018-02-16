@@ -1,5 +1,7 @@
 param([Boolean]$silent=$false)
 
+$start_dir = $pwd
+
 function KeypressToContinue() {
     If ($silent) {
         break;
@@ -7,6 +9,7 @@ function KeypressToContinue() {
     Write-Host -NoNewLine 'Press any key to continue...';
     $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown');
 }
+
 
 #######################
 # wait for user input #
@@ -20,14 +23,36 @@ if (-not ([security.principal.windowsprincipal] [security.principal.windowsident
     break
 }
 
-set-executionpolicy unrestricted
+Set-ExecutionPolicy Unrestricted                 # Set policy for machine scope
+Set-ExecutionPolicy Unrestricted -Scope Process  # Ensures policy setting for this script
+
+
+##############################
+# create install temp folder #
+##############################
+
+$setup_files_dir_name = "windows-machine-setup-files"
+
+cd $env:UserProfile/Downloads/
+(Remove-Item -Recurse -Force $setup_files_dir_name) 2> $null
+mkdir $setup_files_dir_name
+pushd $setup_files_dir_name
+
 
 #######################################
 # chain install some package managers #
 #######################################
 
 install-module -name nuget
-install-package chocolatey
+nuget install chocolatey
+pushd chocolatey*
+pushd tools
+    ./chocolateyInstall.ps1
+popd
+popd
+
+. $profile
+
 
 #######################
 # chocolatey packages #
@@ -42,11 +67,14 @@ choco install -y vscode-csharp vscode-gitlens
 choco install -y dotnetcore-sdk
 choco install -y openssh
 
+
 ##################
 # other packages #
 ##################
+
 Set-PSRepository -Name PSGallery -InstallationPolicy Trusted  # Needed to avoid prompts.
 PowerShellGet\Install-Module posh-git -Scope AllUsers
+
 
 ###############
 # other setup #
@@ -58,6 +86,7 @@ set-alias 7z "$env:programfiles\7-zip\7z.exe"
 # extract and say yes to prompts
 7z x -y git-duet-amd64.tar.gz git-duet-amd64.tar
 7z x -y git-duet-amd64.tar -o"$env:programfiles\git\cmd"
+
 
 ###############
 # git aliases #
@@ -72,7 +101,11 @@ git config --global alias.ci duet-commit
 git config --global alias.lola "log --graph --decorate --pretty=oneline --abbrev-commit --all"
 git config --global alias.lol "log --graph --decorate --pretty=oneline --abbrev-commit"
 
+cd $start_dir
+
+
 #######################
 # wait for user input #
 #######################
+
 KeypressToContinue
