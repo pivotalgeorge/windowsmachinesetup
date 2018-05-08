@@ -43,16 +43,17 @@ pushd $setup_files_dir_name
 # chain install some package managers #
 #######################################
 
-install-module -name nuget
-nuget install chocolatey
-pushd chocolatey*
-pushd tools
-    ./chocolateyInstall.ps1
-popd
-popd
+# install-module -force -name nuget
+# Install-Package NuGet.InstallCommandLineExtension
 
-. $profile
+# Install-Package chocolatey
+# Initialize-Chocolatey
+# Uninstall-Package chocolatey
 
+$thing = (New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1')
+
+if (Get-Authovalid)
+iex $thing
 
 #######################
 # chocolatey packages #
