@@ -1,14 +1,12 @@
 # windowsmachinesetup
 
-## set proxy variables as needed
-
-If you need to have a proxy set to connect/download content from the World Wide Web, you should:
-
+## Enable running script
 ```powershell
-set -name
-
-
+Set-ExecutionPolicy Unrestricted -Scope Process
 ```
 
-## Enable running script
-Set-ExecutionPolicy Unrestricted -Scope Process
+## Install
+From an unelevated prompt, run
+```powershell
+./setup.ps1
+```
