@@ -23,7 +23,6 @@ if (-not ([security.principal.windowsprincipal] [security.principal.windowsident
 {
     write-warning "This script should be run as an administrator."
     KeypressToExit $EXITCODE_NOTADMIN
-    exit
 }
 
 try
@@ -61,7 +60,7 @@ try
     if ($script_thumbprint -ne $CHOCOLATEY_THUMBPRINT) {
         Write-Warning 'FAILURE. Thumbprint of script does not match Chocolatey thumbprint.
     Please check at https://chocolatey.org/security#chocolatey-binaries-and-the-chocolatey-package'
-        exit
+        exit $EXITCODE_EXCEPTION
     }
 
     iex $script
