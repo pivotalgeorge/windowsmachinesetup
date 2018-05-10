@@ -1,15 +1,18 @@
 param([Boolean]$silent=$false)
 
 $start_dir = $pwd
+$CHOCOLATEY_THUMBPRINT = "4BF7DCBC06F6D0BDFA8A0A78DE0EFB62563C4D87"
+$EXITCODE_NOTADMIN = 1
+$EXITCODE_EXCEPTION = 2
 
-function KeypressToContinue() {
+function KeypressToExit($code = 0) {
     If ($silent) {
         break;
     }
-    Write-Host -NoNewLine 'Press any key to continue...';
+    Write-Host -NoNewLine 'Press any key to exit...';
     $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown');
+    exit $code
 }
-
 
 #######################
 # wait for user input #
@@ -18,94 +21,91 @@ function KeypressToContinue() {
 if (-not ([security.principal.windowsprincipal] [security.principal.windowsidentity]::getcurrent()).isinrole(
     [security.principal.windowsbuiltinrole] "administrator"))
 {
-    write-warning "Re-run this script as an administrator."
-    KeypressToContinue
-    break
+    write-warning "This script should be run as an administrator."
+    KeypressToExit $EXITCODE_NOTADMIN
 }
 
-Set-ExecutionPolicy Unrestricted                 # Set policy for machine scope
-Set-ExecutionPolicy Unrestricted -Scope Process  # Ensures policy setting for this script
+try
+    {
+    Set-ExecutionPolicy Unrestricted                 # Set policy for machine scope
+    Set-ExecutionPolicy Unrestricted -Scope Process  # Ensures policy setting for this script
+
+    ##############################
+    # create install temp folder #
+    ##############################
+
+    $setup_files_dir_name = "windows-machine-setup-files"
+
+    cd $env:UserProfile/Downloads/
+    (Remove-Item -Recurse -Force $setup_files_dir_name) 2> $null
+    mkdir $setup_files_dir_name
+    pushd $setup_files_dir_name
 
 
-##############################
-# create install temp folder #
-##############################
 
-$setup_files_dir_name = "windows-machine-setup-files"
+    ##########################################
+    # install the chocolatey package manager #
+    ##########################################
 
-cd $env:UserProfile/Downloads/
-(Remove-Item -Recurse -Force $setup_files_dir_name) 2> $null
-mkdir $setup_files_dir_name
-pushd $setup_files_dir_name
+    # use system proxy and download chocolatey isntall script
+    [System.Net.WebRequest]::DefaultWebProxy.Credentials = [System.Net.CredentialCache]::DefaultCredentials
+    $script = (New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1')
 
-
-#######################################
-# chain install some package managers #
-#######################################
-
-install-module -name nuget
-nuget install chocolatey
-pushd chocolatey*
-pushd tools
-    ./chocolateyInstall.ps1
-popd
-popd
-
-. $profile
+    # validate contents of chocolatey install script
+    $encoding = [system.Text.Encoding]::UTF8
+    $script_data = $encoding.GetBytes($script)
+    $script_thumbprint = (Get-AuthenticodeSignature -SourcePathOrExtension .ps1 -Content $script_data).SignerCertificate.Thumbprint
 
 
-#######################
-# chocolatey packages #
-#######################
+    if ($script_thumbprint -ne $CHOCOLATEY_THUMBPRINT) {
+        Write-Warning 'FAILURE. Thumbprint of script does not match Chocolatey thumbprint.
+    Please check at https://chocolatey.org/security#chocolatey-binaries-and-the-chocolatey-package'
+        exit $EXITCODE_EXCEPTION
+    }
 
-choco install -y git
-choco install -y notepadplusplus
-choco install -y 7zip
-choco install -y gow
-choco install -y visualstudiocode
-choco install -y vscode-csharp vscode-gitlens
-choco install -y dotnetcore-sdk
-choco install -y openssh
+    iex $script
 
+    #######################
+    # chocolatey packages #
+    #######################
 
-##################
-# other packages #
-##################
+    choco install -y git
+    choco install -y notepadplusplus
+    choco install -y 7zip
+    choco install -y gow
+    choco install -y visualstudiocode
+    choco install -y vscode-csharp vscode-gitlens
+    choco install -y dotnetcore-sdk
+    choco install -y openssh
+    choco install -y atom
 
-Set-PSRepository -Name PSGallery -InstallationPolicy Trusted  # Needed to avoid prompts.
-PowerShellGet\Install-Module posh-git -Scope AllUsers
+    ##################
+    # other packages #
+    ##################
 
+    Install-PackageProvider -Name NuGet -Force
+    Set-PSRepository -Name PSGallery -InstallationPolicy Trusted  # Needed to avoid prompts.
+    PowerShellGet\Install-Module posh-git -Scope AllUsers
 
-###############
-# other setup #
-###############
+    ###############
+    # other setup #
+    ###############
 
-cd ~/downloads
-(new-object system.net.webclient).downloadfile('https://github.com/git-duet/git-duet/releases/download/0.5.2/windows_amd64.tar.gz', "$env:homepath\\downloads\\git-duet-amd64.tar.gz")
-set-alias 7z "$env:programfiles\7-zip\7z.exe"
-# extract and say yes to prompts
-7z x -y git-duet-amd64.tar.gz git-duet-amd64.tar
-7z x -y git-duet-amd64.tar -o"$env:programfiles\git\cmd"
-
-
-###############
-# git aliases #
-###############
-
-set-alias git "$env:ProgramFiles\Git\cmd\git.exe"
-
-git config --global alias.co checkout
-git config --global alias.br branch
-git config --global alias.st status
-git config --global alias.ci duet-commit
-git config --global alias.lola "log --graph --decorate --pretty=oneline --abbrev-commit --all"
-git config --global alias.lol "log --graph --decorate --pretty=oneline --abbrev-commit"
-
-cd $start_dir
-
-
-#######################
-# wait for user input #
-#######################
-
-KeypressToContinue
+    cd ~/downloads
+    (new-object system.net.webclient).downloadfile('https://github.com/git-duet/git-duet/releases/download/0.5.2/windows_amd64.tar.gz', "$env:homepath\\downloads\\git-duet-amd64.tar.gz")
+    set-alias 7z "$env:programfiles\7-zip\7z.exe"
+    # extract and say yes to prompts
+    7z x -y git-duet-amd64.tar.gz git-duet-amd64.tar
+    7z x -y git-duet-amd64.tar -o"$env:programfiles\git\cmd"
+}
+catch {
+    Write-Warning "attention-grabbing whitespace below"
+    Write-Warning ""
+    Write-Warning ""
+    Write-Warning ""
+    Write-Warning ""
+    Write-Warning ""
+    Write-Warning ""
+    Write-Warning "Something broke :( See output above"
+    KeypressToExit $EXITCODE_EXCEPTION
+}
