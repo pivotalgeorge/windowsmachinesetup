@@ -101,13 +101,9 @@ try
     7z x -y git-duet-amd64.tar -o"$env:programfiles\git\cmd"
 }
 catch {
-    Write-Warning "attention-grabbing whitespace below"
     Write-Warning ""
+    Write-Warning "Something broke :("
     Write-Warning ""
-    Write-Warning ""
-    Write-Warning ""
-    Write-Warning ""
-    Write-Warning ""
-    Write-Warning "Something broke :( See output above"
+    Write-Error $_.Exception
     KeypressToExit $EXITCODE_EXCEPTION
 }
