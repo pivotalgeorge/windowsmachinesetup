@@ -78,6 +78,8 @@ try
     choco install -y dotnetcore-sdk
     choco install -y openssh
     choco install -y atom
+    choco install -y conemu
+    choco install -y docker-for-windows
 
     ##################
     # other packages #
