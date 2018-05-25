@@ -77,7 +77,8 @@ try
     choco install -y vscode-csharp vscode-gitlens
     choco install -y dotnetcore-sdk
     choco install -y openssh
-    choco install -y atom
+    choco install -y conemu
+    choco install -y docker-for-windows
 
     ##################
     # other packages #
@@ -92,20 +93,25 @@ try
     ###############
 
     cd ~/downloads
-    (new-object system.net.webclient).downloadfile('https://github.com/git-duet/git-duet/releases/download/0.5.2/windows_amd64.tar.gz', "$env:homepath\\downloads\\git-duet-amd64.tar.gz")
+    (new-object system.net.webclient).downloadfile('https://github.com/git-duet/git-duet/releases/download/0.6.0/windows_amd64.tar.gz', "$env:homepath\\downloads\\git-duet-amd64.tar.gz")
     set-alias 7z "$env:programfiles\7-zip\7z.exe"
     # extract and say yes to prompts
     7z x -y git-duet-amd64.tar.gz git-duet-amd64.tar
     7z x -y git-duet-amd64.tar -o"$env:programfiles\git\cmd"
+
+    ###################
+    # git duet config #
+    ###################
+
+    [Environment]::SetEnvironmentVariable("GIT_DUET_CO_AUTHORED_BY", 1, "Machine")
+    [Environment]::SetEnvironmentVariable("GIT_DUET_GLOBAL", $true, "Machine")
+
+
 }
 catch {
-    Write-Warning "attention-grabbing whitespace below"
     Write-Warning ""
+    Write-Warning "Something broke :("
     Write-Warning ""
-    Write-Warning ""
-    Write-Warning ""
-    Write-Warning ""
-    Write-Warning ""
-    Write-Warning "Something broke :( See output above"
+    Write-Error $_.Exception
     KeypressToExit $EXITCODE_EXCEPTION
 }
